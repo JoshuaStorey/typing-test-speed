@@ -1,118 +1,174 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-
-const inter = Inter({ subsets: ['latin'] })
+import Image from 'next/image';
+import { useEffect, useState, useRef, SyntheticEvent } from 'react';
+import { generate } from 'random-words';
+const NUM_WORDS = 100;
+const SECONDS = 60;
 
 export default function Home() {
+  const [words, setWords] = useState([]);
+  const [countDown, setCountDown] = useState(SECONDS);
+  const [started, setStarted] = useState(false);
+  const [currInput, setCurrInput] = useState('');
+  const [currWordIndex, setCurrWordIndex] = useState(0);
+  const [currCharIndex, setCurrCharIndex] = useState(-1);
+  const [currChar, setCurrChar] = useState('');
+  const [correct, setCorrect] = useState(0);
+  const [incorrect, setIncorrect] = useState(0);
+  const [status, setStatus] = useState('waiting');
+  const textInput = useRef(null);
+  useEffect(() => {
+    setWords(generate(NUM_WORDS));
+    textInput.current.focus();
+  }, []);
+
+  const start = () => {
+    //reset condition
+    if (status === 'finished') {
+      setWords(generate(NUM_WORDS));
+      setCurrWordIndex(0);
+      setCorrect(0);
+      setIncorrect(0);
+      setCurrCharIndex(-1);
+      setCurrChar('');
+      textInput.current.focus();
+    }
+    if (status !== 'Started') {
+      setStatus('started');
+
+      let interval = setInterval(() => {
+        setCountDown((prevCountdown) => {
+          if (prevCountdown === 0) {
+            clearInterval(interval);
+            setStatus('finished');
+            setCurrInput('');
+            return SECONDS;
+          } else {
+            return prevCountdown - 1;
+          }
+        });
+      }, 1000);
+    }
+  };
+  const detectKeyDown = (e) => {
+    if (!started) {
+      //if (e.keyCode == 32) {
+      start();
+      setStarted(true);
+      // }
+    }
+  };
+  const handleKeyDown = ({ keyCode, key }) => {
+    // space bar
+    if (keyCode === 32) {
+      checkMatch();
+      setCurrInput('');
+      setCurrWordIndex(currWordIndex + 1);
+      setCurrCharIndex(-1);
+      // backspace
+    } else if (keyCode === 8) {
+      setCurrCharIndex(currCharIndex - 1);
+      setCurrChar('');
+    } else {
+      setCurrCharIndex(currCharIndex + 1);
+      setCurrChar(key);
+    }
+  };
+  function getCharClass(wordIdx, charIdx, char) {
+    if (
+      wordIdx === currWordIndex &&
+      charIdx === currCharIndex &&
+      currChar &&
+      status !== 'finished'
+    ) {
+      if (char === currChar) {
+        return 'bg-green-400';
+      } else {
+        return 'bg-red-400';
+      }
+    } else if (
+      wordIdx === currWordIndex &&
+      currCharIndex >= words[currWordIndex].length
+    ) {
+      return 'bg-red-400';
+    } else {
+      return '';
+    }
+  }
+  function checkMatch() {
+    const wordToCompare = words[currWordIndex];
+    const doesItMatch = wordToCompare === currInput.trim();
+    if (doesItMatch) {
+      setCorrect(correct + 1);
+    } else {
+      setIncorrect(incorrect + 1);
+    }
+  }
+
   return (
     <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
+      onKeyDown={(e) => detectKeyDown(e)}
+      className=' text-primaryYellow text-2xl text-center flex flex-col justify-center items-center m-32 '
     >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">pages/index.js</code>
+      <div className='my-12 font-bold'>
+        <h1>Typing Speed Test</h1>
+        <p
+          className='text-sm py-6
+        '
+        >
+          begin typing to start the test.
         </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+        <p>{countDown} seconds remaining</p>
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+      <div>
+        <input
+          ref={textInput}
+          type='text'
+          className='input bg-slate-800 border-white border-2 text-white text-md rounded-lg focus:ring-blue-500 focus:border-blue-500 block mb-8 pb-4 w-96 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500'
+          onKeyDown={handleKeyDown}
+          value={currInput}
+          onChange={(e) => setCurrInput(e.target.value)}
         />
       </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
+      <div>
+        {words.map((word, i) => (
+          <span key={i}>
+            <span>
+              {word.split('').map((char, idx) => (
+                <span className={getCharClass(i, idx, char)} key={idx}>
+                  {char}
+                </span>
+              ))}
             </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+            <span> </span>
+          </span>
+        ))}
       </div>
+      {status === 'finished' && (
+        <div className='mt-6 flex flex-col'>
+          <button
+            class='bg-primaryYellow hover:bg-slate-800 text-white font-bold py-2 px-4 my-6 border border-yellow-800 rounded'
+            onClick={start}
+          >
+            Retry!
+          </button>
+          <div className=''>
+            <div className=''>
+              <p className=''>WPM:</p>
+              <p className=''>{correct}</p>
+            </div>
+            <div className=''>
+              <p className=''>Accuracy:</p>
+              {correct !== 0 ? (
+                <p className=''>
+                  {Math.round((correct / (correct + incorrect)) * 100)}%
+                </p>
+              ) : (
+                <p className=''>0%</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
-  )
+  );
 }
